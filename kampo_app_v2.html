@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>漢方診療支援アプリ ver2</title>
+<style>
+  :root{
+    --bg:#eef1f4; --panel:#ffffff; --panel2:#f3f6f9; --line:#d6dde4;
+    --txt:#1b2733; --sub:#5a6b78; --accent:#0f8a7e; --accent2:#2f6fb0;
+    --warn:#b9791a; --bad:#cf4a3c; --good:#2e9a57;
+    --chip:#eef2f6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Hiragino Kaku Gothic ProN","Yu Gothic",Meiryo,sans-serif;
+    background:var(--bg);color:var(--txt);line-height:1.6;font-size:15px}
+  header{background:linear-gradient(120deg,#13615a,#0f4a6e);padding:14px 20px;color:#fff;
+    border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:700;color:#fff}
+  header .ver{background:#fff;color:#0f8a7e;font-size:11px;font-weight:700;
+    padding:2px 8px;border-radius:10px}
+  header .spacer{flex:1}
+  .wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px;max-width:1400px;margin:0 auto}
+  @media(max-width:900px){.wrap{grid-template-columns:1fr}}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .panel h2{font-size:14px;margin:0 0 10px;color:var(--sub);font-weight:600;
+    letter-spacing:.5px;display:flex;align-items:center;gap:8px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:8px;padding:9px 14px;
+    font-size:14px;font-weight:600;transition:.15s;color:#fff}
+  button:disabled{opacity:.4;cursor:not-allowed}
+  .btn-rec{background:var(--bad)}
+  .btn-rec.recording{background:#b33;animation:pulse 1.3s infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(224,107,94,.5)}50%{box-shadow:0 0 0 8px rgba(224,107,94,0)}}
+  .btn-main{background:var(--accent)}
+  .btn-sub{background:var(--chip);color:var(--txt)}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  textarea{width:100%;min-height:160px;background:var(--panel2);color:var(--txt);
+    border:1px solid var(--line);border-radius:8px;padding:10px;font-size:15px;
+    font-family:inherit;resize:vertical}
+  .status{font-size:12px;color:var(--sub)}
+  .status .dot{display:inline-block;width:8px;height:8px;border-radius:50%;
+    background:#555;margin-right:5px;vertical-align:middle}
+  .status .dot.on{background:var(--bad)}
+  .axes{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:6px}
+  .axis{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+  .axis .lbl{font-size:11px;color:var(--sub)}
+  .axis .val{font-size:15px;font-weight:700;margin-top:2px}
+  .axis .bar{height:5px;border-radius:3px;background:#dde4ea;margin-top:6px;position:relative;overflow:hidden}
+  .axis .bar i{position:absolute;top:0;bottom:0;border-radius:3px}
+  .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .tag{background:var(--chip);border:1px solid var(--line);color:var(--txt);
+    font-size:12px;padding:3px 9px;border-radius:12px}
+  .tag.hit{background:#e1f3f0;border-color:var(--accent);color:#0c6a60}
+  .rx{background:var(--panel2);border:1px solid var(--line);border-left:4px solid var(--accent);
+    border-radius:8px;padding:11px 13px;margin-bottom:10px}
+  .rx.top{border-left-color:var(--good);background:#e9f6ed}
+  .rx .head{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .rx .name{font-size:17px;font-weight:700}
+  .rx .yomi{font-size:12px;color:var(--sub)}
+  .rx .tsu{font-size:11px;background:var(--chip);padding:2px 7px;border-radius:8px;color:var(--sub)}
+  .rx .score{margin-left:auto;font-size:13px;font-weight:700;color:var(--accent)}
+  .rx .shokan{font-size:10px;font-weight:700;color:#fff;background:var(--warn);
+    padding:2px 7px;border-radius:8px}
+  .rx .makers{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .mk{font-size:11px;padding:2px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel)}
+  .mk-t{color:#0c6a60;border-color:#9fd6cf;background:#e8f5f2}
+  .mk-k{color:#6a4a8a;border-color:#cdbbe0;background:#f1ebf7}
+  .mk-o{color:#8a5a1a;border-color:#e2c89a;background:#f7efe0}
+  .rx .ind{font-size:13px;color:var(--txt);margin-top:6px}
+  .rx .reason{font-size:12px;color:var(--sub);margin-top:6px}
+  .rx .reason b{color:#0c6a60;font-weight:700}
+  .rx .caution{font-size:12px;color:var(--warn);margin-top:5px}
+  .followups{padding-left:18px;margin:6px 0}
+  .followups li{margin-bottom:7px}
+  .fq{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 11px;
+    margin-bottom:8px;display:flex;gap:10px;align-items:flex-start}
+  .fq .q{flex:1;font-size:14px}
+  .fq .why{font-size:11px;color:var(--sub);margin-top:3px}
+  .fq button{padding:5px 9px;font-size:12px;background:var(--accent2);flex-shrink:0}
+  .empty{color:var(--sub);font-size:13px;padding:10px 0}
+  details{margin-top:10px}
+  summary{cursor:pointer;color:var(--sub);font-size:13px}
+  .ai-box{margin-top:8px}
+  .ai-box input{width:100%;background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:8px;padding:8px;font-size:13px;margin-bottom:6px}
+  .ai-box select{background:var(--panel2);color:var(--txt);border:1px solid var(--line);
+    border-radius:8px;padding:7px;font-size:13px;margin-bottom:6px}
+  .ai-out{white-space:pre-wrap;font-size:13px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:8px;padding:10px;margin-top:8px}
+  .disclaimer{font-size:11px;color:var(--sub);padding:6px 14px;text-align:center;border-top:1px solid var(--line)}
+  .row-inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .speak-on{accent-color:var(--accent)}
+  .mini{font-size:12px;color:var(--sub)}
+  /* 基本情報フォーム */
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px}
+  .fld label{display:block;font-size:11px;color:var(--sub);margin-bottom:3px}
+  .fld input,.fld select{width:100%;background:var(--panel2);color:var(--txt);
+    border:1px solid var(--line);border-radius:8px;padding:8px;font-size:14px;font-family:inherit}
+  /* 随伴症状チェックリスト */
+  .sx-group{margin-top:10px}
+  .sx-group h3{font-size:12px;color:var(--accent);margin:0 0 5px;font-weight:600}
+  .sx-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(135px,1fr));gap:4px 10px}
+  .sx-item{display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;
+    padding:3px 4px;border-radius:6px}
+  .sx-item:hover{background:var(--panel2)}
+  .sx-item input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+  /* 分岐トグル（急性発熱性疾患） */
+  .seg{display:flex;gap:8px}
+  .seg label{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:8px;
+    padding:10px;font-size:14px;font-weight:600;cursor:pointer}
+  .seg input{display:none}
+  .seg label.on-yes{border-color:var(--bad);background:#fbe9e6;color:#a8392c}
+  .seg label.on-no{border-color:var(--accent);background:#e6f4f1;color:#0c6a60}
+  .banner{margin-top:10px;padding:8px 11px;border-radius:8px;font-size:13px;
+    border:1px solid var(--line);background:var(--panel2)}
+  .banner b{color:var(--accent)}
+  .banner.acute b{color:var(--bad)}
+</style>
+</head>
+<body>
+<header>
+  <h1>漢方診療支援アプリ</h1><span class="ver">ver2</span>
+  <span class="spacer"></span>
+</header>
+
+<div class="wrap">
+  <div>
+    <div class="panel">
+      <h2>① 基本情報</h2>
+      <div class="form-grid">
+        <div class="fld"><label>年齢</label><input id="ageInput" type="number" min="0" max="120" placeholder="例 52"></div>
+        <div class="fld"><label>性別</label>
+          <select id="sexSel"><option value="">—</option><option value="女性">女性</option><option value="男性">男性</option></select></div>
+        <div class="fld"><label>体格</label>
+          <select id="buildSel">
+            <option value="">—</option>
+            <option value="実">がっしり・固太り（実証傾向）</option>
+            <option value="中">中肉中背（中間）</option>
+            <option value="虚">やせ型・華奢（虚証傾向）</option>
+            <option value="水">色白・水太り（水滞傾向）</option>
+          </select></div>
+        <div class="fld"><label>発症からの日数</label>
+          <select id="daysSel">
+            <option value="">—</option>
+            <option value="1日程度">1日程度</option>
+            <option value="3日以内">3日以内</option>
+            <option value="7日程度">7日程度</option>
+            <option value="14日程度">14日程度</option>
+            <option value="28日程度">28日程度</option>
+            <option value="3ヶ月以上">3ヶ月以上</option>
+          </select></div>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>② 急性発熱性疾患の該当</h2>
+      <div class="mini" style="margin-bottom:8px">感冒・インフルエンザ様の急性発熱性疾患かどうかを最初に判断します。これにより評価の枠組みが変わります。</div>
+      <div class="seg">
+        <label id="afiYesLbl"><input type="radio" name="afi" value="あり">あり（急性発熱性疾患）</label>
+        <label id="afiNoLbl"><input type="radio" name="afi" value="なし" checked>なし（その他・慢性）</label>
+      </div>
+      <div class="banner" id="modeBanner"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>③ 問診記録（マイク入力・追記式）</h2>
+      <div class="mini" style="margin-bottom:8px">主訴・随伴症状などをここに記録します。<b>「録音開始」を押すたびに、既存の内容の末尾へ追記</b>されます。追加で問診したら録音を重ね、その都度「漢方薬を選択する」を押し直してください。</div>
+      <div class="btn-row">
+        <button id="recBtn" class="btn-rec">● 録音開始</button>
+        <button id="clearBtn" class="btn-sub">クリア</button>
+        <button id="demoBtn" class="btn-sub">デモ入力</button>
+      </div>
+      <div class="status"><span class="dot" id="recDot"></span><span id="recStat">待機中（録音開始で文字起こし・追記します）</span></div>
+      <textarea id="memoText" placeholder="問診内容をここに記録します。手入力・修正も可能です。録音を重ねるほど内容が積み上がります。&#10;例：疲れやすくて食欲がない。手足が冷える。" style="min-height:110px"></textarea>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2 id="sxTitle">④ 随伴症状（漢方鑑別に必要な項目）</h2>
+      <div class="mini" style="margin-bottom:6px">該当する項目にチェック（＝あり）。チェックの無い項目は「なし／不明」として扱います。項目は②の選択で切り替わります。</div>
+      <div id="sxList"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <div class="btn-row" style="margin-bottom:0">
+        <button id="analyzeBtn" class="btn-main" style="width:100%">▶ 漢方薬を選択する（何度でも再検討可）</button>
+      </div>
+      <div class="mini" id="runCount" style="margin-top:8px;text-align:center">問診記録の追記・随伴症状チェックの変更（どちらでも）後にこのボタンを押すと、両方を加味して候補を再検討します。</div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>⑤ 追加で確認したい問診事項（医師が口頭で確認）</h2>
+      <div id="followups"><div class="empty">解析後、証を絞り込むために確認すべき項目を一覧表示します。</div></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>③ 推奨処方</h2>
+      <div class="mini" style="margin-bottom:8px">各候補にツムラ・クラシエ・コタローの製品番号を併記します。「—」は当該メーカーに同名のエキス製剤が無い（または要確認）ことを示します。取扱状況・剤形は変動するため、調剤時は各社の最新情報をご確認ください。</div>
+      <div id="results"><div class="empty">問診を入力して「漢方薬を選択する」を押してください。</div></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>証（しょう）の推定</h2>
+      <div class="axes" id="axes"></div>
+      <div class="tags" id="symptomTags"><span class="empty">解析するとここに抽出された所見が表示されます。</span></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>⑤ AI併用（任意）</h2>
+      <div class="mini">ルールベースの候補をAIで補足検討します。APIキー未入力でもアプリは動作します。キーはブラウザ内のみで使用します。</div>
+      <details class="ai-box" id="aiBox">
+        <summary>AI設定を開く</summary>
+        <div style="margin-top:8px">
+          <select id="aiProvider">
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="openai">OpenAI</option>
+          </select>
+          <input type="password" id="aiKey" placeholder="APIキーを貼り付け（任意）">
+          <button id="aiBtn" class="btn-main" style="width:100%">AIで補足検討する</button>
+          <div class="ai-out" id="aiOut" style="display:none"></div>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+
+<div class="disclaimer">
+  本アプリは漢方診療の<b>意思決定支援</b>を目的とした参考ツールです。最終的な診断・処方は医師の判断によります。証の推定・スコアは入力テキストからの推定であり確定診断ではありません。
+</div>
+
+<script>
+/* ============================================================
+   漢方処方データベース（主要約40処方）
+   kyo:虚実 -2..2(虚-…実+) / kan:寒熱 -2..2(寒-…熱+)
+   pat:証タグ / kw:適応キーワード（問診照合用）
+   ============================================================ */
+const DB = [
+ {n:"葛根湯",y:"かっこんとう",t:1,kyo:1.5,kan:-1,pat:["表寒"],
+  kw:["肩こり","頭痛","発熱","悪寒","汗が出ない","汗をかかない","無汗","風邪","かぜ","項","首筋","こわばり","ふしぶし","関節痛"],
+  ind:"感冒初期で汗が出ず、項背部のこわばり・肩こりを伴う実証タイプ。",
+  ca:"胃腸虚弱・発汗過多・動悸のある人、高血圧には注意（麻黄）。"},
+ {n:"麻黄湯",y:"まおうとう",t:27,kyo:2,kan:-1,pat:["表寒"],
+  kw:["高熱","悪寒","関節痛","ふしぶし","体が痛い","無汗","汗が出ない","インフルエンザ","鼻づまり","咳"],
+  ind:"感冒・インフルエンザ初期、強い悪寒・高熱・関節痛があり汗の出ない体力充実タイプ。",
+  ca:"高齢・虚弱・発汗過多には不向き（麻黄）。"},
+ {n:"桂枝湯",y:"けいしとう",t:45,kyo:-1,kan:-1,pat:["表寒"],
+  kw:["風邪","かぜ","汗が出る","汗をかく","自汗","寒気","虚弱","胃腸が弱い","頭痛"],
+  ind:"感冒初期で自然に汗が出る、体力のない虚証タイプ。",
+  ca:"のぼせ・実熱の強い人には不向き。"},
+ {n:"小青竜湯",y:"しょうせいりゅうとう",t:19,kyo:0,kan:-1,pat:["水滞","表寒"],
+  kw:["鼻水","水様","くしゃみ","鼻づまり","花粉症","アレルギー","薄い痰","咳","気管支"],
+  ind:"水様性鼻汁・くしゃみ・薄い痰を伴うアレルギー性鼻炎・気管支炎。",
+  ca:"麻黄含有。動悸・不眠・胃障害に注意。"},
+ {n:"麻黄附子細辛湯",y:"まおうぶしさいしんとう",t:127,kyo:-1,kan:-2,pat:["表寒"],
+  kw:["寒気","冷え","だるい","倦怠","高齢","微熱","鼻水","のどの痛み","風邪"],
+  ind:"高齢者・虚弱者の感冒で、強い冷え・倦怠感を伴う寒証タイプ。",
+  ca:"麻黄・附子含有。のぼせ・動悸に注意。"},
+ {n:"小柴胡湯",y:"しょうさいことう",t:9,kyo:0,kan:0,pat:["少陽"],
+  kw:["微熱","食欲不振","口が苦い","吐き気","胸脇苦満","だるい","長引く","亜急性","季肋部"],
+  ind:"感冒の遷延期・亜急性期、胸脇苦満・食欲不振・口苦を伴う半表半裏証。",
+  ca:"間質性肺炎の既往、インターフェロン併用は禁忌。"},
+ {n:"柴胡桂枝湯",y:"さいこけいしとう",t:10,kyo:0,kan:0,pat:["少陽","表寒"],
+  kw:["微熱","頭痛","吐き気","腹痛","風邪が長引く","食欲不振","関節痛","胸脇苦満"],
+  ind:"感冒の遷延期で頭痛・関節痛・腹部症状を伴うタイプ。",
+  ca:"—"},
+ {n:"大柴胡湯",y:"だいさいことう",t:8,kyo:2,kan:1,pat:["少陽","裏実"],
+  kw:["便秘","肥満","がっしり","肩こり","胸脇苦満","イライラ","高血圧","みぞおち","つかえ"],
+  ind:"体力充実・便秘・胸脇苦満の強い実証。肥満傾向や高血圧を伴うことも。",
+  ca:"虚弱・下痢には不向き（大黄）。"},
+ {n:"半夏瀉心湯",y:"はんげしゃしんとう",t:14,kyo:0,kan:0,pat:["気滞","水滞"],
+  kw:["みぞおち","つかえ","下痢","軟便","吐き気","ゲップ","お腹が鳴る","腹鳴","口内炎","胃もたれ"],
+  ind:"みぞおちのつかえ・腹鳴・下痢／軟便、吐き気を伴う心下痞硬タイプ。",
+  ca:"—"},
+ {n:"補中益気湯",y:"ほちゅうえっきとう",t:41,kyo:-2,kan:0,pat:["気虚"],
+  kw:["疲れやすい","倦怠","食欲不振","だるい","気力がない","元気がない","汗をかきやすい","病後","夏バテ","声に力がない"],
+  ind:"全身倦怠・食欲不振・気力低下が続く気虚の代表方剤（医王湯）。",
+  ca:"—"},
+ {n:"六君子湯",y:"りっくんしとう",t:43,kyo:-1.5,kan:-0.5,pat:["気虚","水滞"],
+  kw:["食欲不振","胃もたれ","みぞおち","胃が弱い","痩せ","疲れやすい","吐き気","食後","胃下垂","つかえ"],
+  ind:"胃腸虚弱で食欲不振・胃もたれ・心窩部のつかえがある気虚＋水滞タイプ。",
+  ca:"—"},
+ {n:"人参湯",y:"にんじんとう",t:32,kyo:-1.5,kan:-2,pat:["気虚","裏寒"],
+  kw:["冷え","下痢","胃痛","食欲不振","お腹が冷える","唾が多い","薄い尿","疲れやすい"],
+  ind:"冷えが強く、胃腸が冷えて下痢・胃痛・食欲不振を呈する裏寒・気虚タイプ。",
+  ca:"熱証・のぼせには不向き。"},
+ {n:"十全大補湯",y:"じゅうぜんたいほとう",t:48,kyo:-2,kan:-1,pat:["気虚","血虚"],
+  kw:["疲れやすい","貧血","顔色が悪い","痩せ","病後","術後","食欲不振","冷え","皮膚乾燥","体力低下"],
+  ind:"病後・術後の衰弱、貧血・顔色不良を伴う気血両虚タイプ。",
+  ca:"—"},
+ {n:"人参養栄湯",y:"にんじんようえいとう",t:108,kyo:-2,kan:-1,pat:["気虚","血虚"],
+  kw:["疲れやすい","貧血","咳","息切れ","不眠","健忘","物忘れ","食欲不振","病後","寝汗"],
+  ind:"気血両虚に呼吸器症状・精神不安・健忘を伴うタイプ。",
+  ca:"—"},
+ {n:"当帰芍薬散",y:"とうきしゃくやくさん",t:23,kyo:-1.5,kan:-1,pat:["血虚","水滞"],
+  kw:["冷え","貧血","むくみ","浮腫","生理不順","生理痛","めまい","立ちくらみ","頭重","疲れやすい","女性"],
+  ind:"冷え・貧血傾向・むくみのある虚証女性の月経異常・不定愁訴。",
+  ca:"—"},
+ {n:"加味逍遙散",y:"かみしょうようさん",t:24,kyo:-0.5,kan:0.5,pat:["気滞","血虚","熱"],
+  kw:["イライラ","のぼせ","ほてり","不眠","肩こり","疲れやすい","気分が変わる","落ち込み","更年期","月経","ホットフラッシュ"],
+  ind:"のぼせ・イライラ・不定愁訴が変動する更年期・自律神経症状（気滞＋血虚）。",
+  ca:"—"},
+ {n:"桂枝茯苓丸",y:"けいしぶくりょうがん",t:25,kyo:1,kan:0.5,pat:["瘀血"],
+  kw:["のぼせ","足の冷え","肩こり","生理痛","月経","シミ","にきび","頭痛","しもやけ","打撲","下腹部"],
+  ind:"のぼせて足は冷える、月経トラブル・下腹部圧痛など瘀血の実証タイプ。",
+  ca:"妊娠中は慎重投与。"},
+ {n:"桃核承気湯",y:"とうかくじょうきとう",t:61,kyo:2,kan:1,pat:["瘀血","裏実"],
+  kw:["便秘","のぼせ","イライラ","月経","生理痛","頭痛","下腹部","のぼせて","精神不安"],
+  ind:"のぼせ・便秘・精神不安を伴う体力充実の瘀血実証。",
+  ca:"虚弱・妊娠中は不向き（大黄・芒硝）。"},
+ {n:"温経湯",y:"うんけいとう",t:106,kyo:-1,kan:-0.5,pat:["瘀血","血虚"],
+  kw:["手のほてり","唇の乾燥","冷え","月経不順","不妊","しもやけ","皮膚乾燥","下腹部"],
+  ind:"手掌のほてり・口唇乾燥を伴う虚証女性の月経異常・冷え。",
+  ca:"—"},
+ {n:"五苓散",y:"ごれいさん",t:17,kyo:0,kan:0,pat:["水滞"],
+  kw:["むくみ","浮腫","口渇","尿が少ない","下痢","吐き気","めまい","頭痛","二日酔い","水を飲んでも","嘔吐"],
+  ind:"口渇があり尿量減少、むくみ・下痢・嘔吐・頭痛などの水滞（水毒）。",
+  ca:"—"},
+ {n:"防已黄耆湯",y:"ぼういおうぎとう",t:20,kyo:-1,kan:0,pat:["気虚","水滞"],
+  kw:["むくみ","水太り","汗をかきやすい","肥満","膝の痛み","関節","疲れやすい","色白","水ぶとり"],
+  ind:"色白・水太り・汗かきで下肢のむくみや膝痛のある気虚＋水滞タイプ。",
+  ca:"—"},
+ {n:"真武湯",y:"しんぶとう",t:30,kyo:-2,kan:-2,pat:["裏寒","水滞"],
+  kw:["冷え","下痢","めまい","ふらつき","だるい","新陳代謝低下","むくみ","動悸","水様便"],
+  ind:"全身の冷え・倦怠・水様下痢・めまいを呈する陽虚（裏寒）＋水滞。",
+  ca:"附子含有。のぼせ・熱証に注意。"},
+ {n:"八味地黄丸",y:"はちみじおうがん",t:7,kyo:-1,kan:-1,pat:["腎虚"],
+  kw:["腰痛","頻尿","夜間尿","下肢の冷え","しびれ","足腰","疲れやすい","口渇","かすみ目","高齢"],
+  ind:"中高年の腎虚で、腰痛・下肢の冷え／しびれ・夜間頻尿を呈するタイプ。",
+  ca:"附子含有。胃弱・のぼせに注意。"},
+ {n:"牛車腎気丸",y:"ごしゃじんきがん",t:107,kyo:-1,kan:-1,pat:["腎虚","水滞"],
+  kw:["腰痛","下肢のむくみ","しびれ","頻尿","夜間尿","下肢の冷え","足のむくみ","神経痛","高齢"],
+  ind:"八味地黄丸の適応＋下肢のむくみ・しびれが強いタイプ。",
+  ca:"附子含有。胃弱に注意。"},
+ {n:"六味丸",y:"ろくみがん",t:87,kyo:-1,kan:0.5,pat:["腎虚"],
+  kw:["ほてり","口渇","頻尿","排尿困難","かすみ目","手足のほてり","腰痛","のぼせ"],
+  ind:"腎虚で冷えよりほてり傾向（陰虚）の排尿異常・腰痛。",
+  ca:"—"},
+ {n:"大建中湯",y:"だいけんちゅうとう",t:100,kyo:-1.5,kan:-2,pat:["裏寒","気虚"],
+  kw:["腹痛","お腹が冷える","腹部膨満","ガス","便秘","腸が動く","術後","お腹が張る","蠕動"],
+  ind:"腹部の強い冷え・腹満・腸蠕動亢進を呈する裏寒タイプ。術後イレウス予防にも。",
+  ca:"—"},
+ {n:"安中散",y:"あんちゅうさん",t:5,kyo:-1,kan:-1,pat:["裏寒","気滞"],
+  kw:["胃痛","胸やけ","げっぷ","痩せ","神経性胃炎","冷え","甘いものを好む","空腹時痛"],
+  ind:"やせ型・冷え傾向で慢性の胃痛・胸やけを呈する神経性胃炎タイプ。",
+  ca:"—"},
+ {n:"半夏厚朴湯",y:"はんげこうぼくとう",t:16,kyo:-0.5,kan:0,pat:["気滞","水滞"],
+  kw:["のどのつかえ","異物感","咽喉","不安","抑うつ","動悸","吐き気","声がれ","ヒステリー球","気分がふさぐ"],
+  ind:"のどの異物感（梅核気）・不安・抑うつを伴う気滞タイプ。",
+  ca:"—"},
+ {n:"抑肝散",y:"よくかんさん",t:54,kyo:-0.5,kan:0.5,pat:["気滞","血虚"],
+  kw:["イライラ","怒りっぽい","興奮","不眠","歯ぎしり","手の震え","神経過敏","認知症","落ち着かない","チック"],
+  ind:"易怒・興奮・不眠など神経の高ぶり（肝の亢進）。認知症の周辺症状にも。",
+  ca:"甘草による偽アルドステロン症に注意。"},
+ {n:"柴胡加竜骨牡蛎湯",y:"さいこかりゅうこつぼれいとう",t:12,kyo:1,kan:0.5,pat:["気滞","少陽"],
+  kw:["不眠","動悸","イライラ","不安","驚きやすい","胸脇苦満","便秘","高血圧","ストレス","のぼせ"],
+  ind:"体力中等度以上で、精神不安・動悸・不眠・胸脇苦満を伴うタイプ。",
+  ca:"—"},
+ {n:"桂枝加竜骨牡蛎湯",y:"けいしかりゅうこつぼれいとう",t:26,kyo:-1.5,kan:-0.5,pat:["気虚","気滞"],
+  kw:["不眠","動悸","疲れやすい","神経過敏","驚きやすい","寝汗","脱毛","遺精","小児夜尿","興奮"],
+  ind:"虚弱・神経過敏で動悸・不眠・易疲労を呈するタイプ。",
+  ca:"—"},
+ {n:"酸棗仁湯",y:"さんそうにんとう",t:103,kyo:-1.5,kan:0.5,pat:["血虚","気虚"],
+  kw:["不眠","眠れない","疲れているのに眠れない","寝つき","心身の疲労","寝汗","動悸"],
+  ind:"心身が疲れているのに眠れない、虚弱体質の不眠（血虚）。",
+  ca:"—"},
+ {n:"麦門冬湯",y:"ばくもんどうとう",t:29,kyo:-0.5,kan:0.5,pat:["陰虚"],
+  kw:["乾いた咳","空咳","痰が切れない","のどの乾燥","こみあげる咳","咳き込む","声がれ"],
+  ind:"痰の少ない乾いた咳・咽喉乾燥を呈する陰虚タイプ。",
+  ca:"—"},
+ {n:"麻杏甘石湯",y:"まきょうかんせきとう",t:55,kyo:1,kan:1,pat:["肺熱"],
+  kw:["咳","喘鳴","ぜいぜい","口渇","汗をかく","気管支","喘息","痰","息苦しい"],
+  ind:"咳・喘鳴が強く口渇・発汗を伴う熱証タイプの気管支炎・喘息。",
+  ca:"麻黄含有。動悸・胃障害に注意。"},
+ {n:"釣藤散",y:"ちょうとうさん",t:47,kyo:0,kan:0.5,pat:["肝陽","気滞"],
+  kw:["頭痛","頭重","めまい","耳鳴り","肩こり","高血圧","朝の頭痛","のぼせ","イライラ","中高年"],
+  ind:"中高年の慢性頭痛・頭重・めまいで高血圧傾向を伴うタイプ。",
+  ca:"—"},
+ {n:"呉茱萸湯",y:"ごしゅゆとう",t:31,kyo:-1,kan:-2,pat:["裏寒","水滞"],
+  kw:["頭痛","片頭痛","嘔吐","吐き気","冷え","肩こり","発作的な頭痛","ガンガンする頭痛"],
+  ind:"冷えると悪化する反復性の頭痛・嘔吐（寒証）の片頭痛タイプ。",
+  ca:"—"},
+ {n:"当帰四逆加呉茱萸生姜湯",y:"とうきしぎゃくかごしゅゆしょうきょうとう",t:38,kyo:-1.5,kan:-2,pat:["裏寒","血虚"],
+  kw:["手足の冷え","しもやけ","凍瘡","下腹部痛","冷えると痛む","腰痛","頭痛","末端の冷え"],
+  ind:"手足末端の強い冷え・しもやけ・冷えによる痛みを呈する血虚＋寒証。",
+  ca:"—"},
+ {n:"芍薬甘草湯",y:"しゃくやくかんぞうとう",t:68,kyo:0,kan:0,pat:["筋攣急"],
+  kw:["こむら返り","足がつる","筋肉のけいれん","急な痛み","腹痛","筋肉痛","ひきつり"],
+  ind:"こむら返り・筋肉の急なけいれん性疼痛に頓用。",
+  ca:"甘草多量。連用で偽アルドステロン症に注意。短期・頓用が原則。"},
+ {n:"黄連解毒湯",y:"おうれんげどくとう",t:15,kyo:1.5,kan:2,pat:["熱","気滞"],
+  kw:["のぼせ","顔が赤い","イライラ","不眠","出血","かゆみ","胃炎","二日酔い","ほてり","充血"],
+  ind:"のぼせ・顔面紅潮・イライラ・出血傾向など熱証の実証タイプ。",
+  ca:"虚弱・冷え症には不向き。"},
+ {n:"防風通聖散",y:"ぼうふうつうしょうさん",t:62,kyo:2,kan:1,pat:["裏実","熱"],
+  kw:["肥満","便秘","太鼓腹","お腹が出る","高血圧","のぼせ","むくみ","メタボ","脂肪"],
+  ind:"腹部に皮下脂肪が多くがっしりして便秘がちな実証の肥満症。",
+  ca:"虚弱・下痢には不向き（大黄・麻黄）。"},
+ {n:"小建中湯",y:"しょうけんちゅうとう",t:99,kyo:-2,kan:-1,pat:["気虚","裏寒"],
+  kw:["腹痛","虚弱児","疲れやすい","お腹が痛い","便秘","下痢","夜尿","小児","顔色が悪い","甘いものを好む"],
+  ind:"虚弱で腹痛を訴えやすい体質（小児を含む）の改善。",
+  ca:"—"},
+ {n:"猪苓湯",y:"ちょれいとう",t:40,kyo:0,kan:0.5,pat:["水滞","熱"],
+  kw:["排尿痛","頻尿","残尿感","血尿","膀胱炎","尿が出にくい","口渇","排尿時痛"],
+  ind:"排尿痛・残尿感・血尿を伴う尿路感染・膀胱炎（下焦の湿熱）。",
+  ca:"—"},
+ {n:"五積散",y:"ごしゃくさん",t:63,kyo:-0.5,kan:-1.5,pat:["裏寒","水滞","血虚"],
+  kw:["腰痛","冷え","下半身の冷え","関節痛","神経痛","月経痛","胃腸虚弱","冷房"],
+  ind:"冷えに伴う腰痛・関節痛・月経痛など、寒・湿・血の停滞が混在するタイプ。",
+  ca:"麻黄含有。"},
+ {n:"清暑益気湯",y:"せいしょえっきとう",t:136,kyo:-1.5,kan:0.5,pat:["気虚"],
+  kw:["夏バテ","食欲不振","倦怠","暑さ","汗が多い","下痢","口渇","だるい","熱中症"],
+  ind:"夏季の倦怠・食欲不振・発汗過多（暑気あたり・夏バテ）。",
+  ca:"—"}
+];
+
+/* 証軸の手がかり辞書 */
+const CUES = {
+  kyo:{
+    "+":["がっしり","体力がある","便秘","太鼓腹","肥満","声が大きい","赤ら顔","のぼせて","充実"],
+    "-":["疲れやすい","だるい","倦怠","虚弱","痩せ","食欲がない","食欲不振","気力がない","胃腸が弱い","胃が弱い","顔色が悪い","声に力がない","汗をかきやすい","元気がない","下痢","軟便"]
+  },
+  kan:{
+    "+":["のぼせ","ほてり","顔が赤い","顔面紅潮","暑がり","口渇","冷たいものを好む","熱感","ホットフラッシュ","充血","炎症"],
+    "-":["冷え","冷える","手足が冷たい","手足の冷え","寒がり","下肢の冷え","お腹が冷える","温めると楽","しもやけ","末端の冷え"]
+  }
+};
+const PAT_CUES = {
+  "気虚":["疲れやすい","倦怠","だるい","気力がない","食欲不振","声に力がない","息切れ","汗をかきやすい","元気がない","病後"],
+  "気滞":["のどのつかえ","異物感","張る","ゲップ","ため息","抑うつ","気分がふさぐ","イライラ","お腹が張る","膨満"],
+  "血虚":["貧血","顔色が悪い","皮膚乾燥","爪がもろい","髪が抜ける","立ちくらみ","めまい","目のかすみ","こむら返り","乾燥肌"],
+  "瘀血":["生理痛","月経痛","のぼせて足は冷える","シミ","くま","しもやけ","打撲","下腹部の圧痛","肩こり","紫"],
+  "水滞":["むくみ","浮腫","めまい","水様","鼻水","尿が少ない","下痢","吐き気","水太り","頭重","拍動性頭痛","痰"],
+  "裏寒":["お腹が冷える","下痢","冷えると痛む","水様便","腹部の冷え","温めると楽"],
+  "腎虚":["腰痛","頻尿","夜間尿","下肢のしびれ","足腰の衰え","かすみ目","高齢","耳鳴り"],
+  "熱":["のぼせ","ほてり","顔が赤い","炎症","充血","出血","かゆみ"]
+};
+
+/* ===================== 随伴症状チェックリスト（漢方鑑別項目） =====================
+   value はスコアリングで照合するキーワード。ラベルは表示名。 */
+const SYMPTOM_GROUPS = [
+ {g:"寒熱・冷え", items:[
+   ["手足の冷え","手足の冷え"],["お腹が冷える","腹・腰の冷え"],["のぼせ","のぼせ"],["ほてり","ほてり"],
+   ["口渇","口渇（水を欲しがる）"],["冷たいものを好む","冷たい物を好む"]]},
+ {g:"汗", items:[
+   ["汗をかきやすい","汗をかきやすい（自汗）"],["寝汗","寝汗（盗汗）"],["汗が出ない","汗が出ない（無汗）"]]},
+ {g:"消化器", items:[
+   ["食欲不振","食欲不振"],["胃もたれ","胃もたれ"],["みぞおち","みぞおちのつかえ"],["吐き気","悪心・嘔吐"],
+   ["お腹が張る","腹部膨満"],["腹痛","腹痛"]]},
+ {g:"便通・泌尿", items:[
+   ["便秘","便秘"],["下痢","下痢・軟便"],["頻尿","頻尿"],["夜間尿","夜間尿"],
+   ["排尿痛","排尿痛・残尿感"],["むくみ","むくみ（浮腫）"]]},
+ {g:"精神・神経", items:[
+   ["不眠","不眠"],["イライラ","イライラ・易怒"],["不安","不安・抑うつ"],["動悸","動悸"]]},
+ {g:"疼痛・運動器", items:[
+   ["頭痛","頭痛"],["肩こり","肩こり"],["腰痛","腰痛"],["関節痛","関節痛・神経痛"],["こむら返り","こむら返り（筋けいれん）"]]},
+ {g:"呼吸器・耳鼻", items:[
+   ["咳","咳"],["痰","痰"],["鼻水","鼻水"],["くしゃみ","くしゃみ"],
+   ["のどのつかえ","のどのつかえ（異物感）"],["乾いた咳","乾いた咳・のど乾燥"]]},
+ {g:"全身", items:[
+   ["疲れやすい","倦怠感・易疲労"],["めまい","めまい・ふらつき"],["貧血","貧血・顔色不良"]]},
+ {g:"婦人科（女性）", items:[
+   ["月経痛","月経痛・月経不順"],["更年期","更年期症状"],["ホットフラッシュ","ホットフラッシュ"]]},
+ {g:"その他", items:[
+   ["口が苦い","口が苦い"],["皮膚乾燥","皮膚乾燥"],["かゆみ","かゆみ"]]}
+];
+/* 急性発熱性疾患＝あり（表証）のときの鑑別項目。八綱（寒熱・虚実・表裏）まで。 */
+const ACUTE_GROUPS = [
+ {g:"悪寒・発熱（八綱：寒熱／表裏）", items:[
+   ["悪寒","強い悪寒・寒気"],["発熱","発熱"],["高熱","高熱"],["微熱","微熱が続く（往来寒熱）"]]},
+ {g:"発汗（八綱：虚実の参考）", items:[
+   ["汗が出ない","汗が出ない（無汗）"],["汗が出る","汗が出る（自汗）"]]},
+ {g:"表の症状", items:[
+   ["こわばり","項・首筋のこわばり"],["頭痛","頭痛"],["関節痛","関節・身体の痛み"],["肩こり","肩こり"]]},
+ {g:"鼻・咽・呼吸", items:[
+   ["鼻水","水様の鼻水"],["くしゃみ","くしゃみ"],["鼻づまり","鼻づまり"],
+   ["のどの痛み","咽の痛み"],["咳","咳"],["薄い痰","薄い痰"]]},
+ {g:"少陽への移行（半表半裏）", items:[
+   ["口が苦い","口が苦い"],["食欲不振","食欲不振・吐き気"],["胸脇苦満","胸脇苦満"]]}
+];
+/* 傷寒論（および金匱要略の急性期）記載の方剤。急性発熱性疾患では優先して候補に挙げる。 */
+const SHOKAN_RX = new Set([
+  "葛根湯","麻黄湯","桂枝湯","小青竜湯","麻黄附子細辛湯","小柴胡湯","柴胡桂枝湯","大柴胡湯",
+  "半夏瀉心湯","人参湯","真武湯","麻杏甘石湯","桃核承気湯","呉茱萸湯","芍薬甘草湯",
+  "柴胡加竜骨牡蛎湯","当帰四逆加呉茱萸生姜湯"
+]);
+/* 急性発熱性疾患（表証）で対象とする傷寒論方剤（六病位：太陽・少陽・少陰） */
+const ACUTE_RX = new Set(["葛根湯","麻黄湯","桂枝湯","小青竜湯","麻黄附子細辛湯","小柴胡湯","柴胡桂枝湯","大柴胡湯","真武湯","麻杏甘石湯"]);
+
+function currentMode(){
+  const v=document.querySelector('input[name="afi"]:checked');
+  return (v && v.value==="あり") ? "acute" : "chronic";
+}
+function renderSymptomList(){
+  const groups = currentMode()==="acute" ? ACUTE_GROUPS : SYMPTOM_GROUPS;
+  $("sxList").innerHTML=groups.map(grp=>
+    `<div class="sx-group"><h3>${grp.g}</h3><div class="sx-grid">`+
+    grp.items.map(([val,lbl])=>
+      `<label class="sx-item"><input type="checkbox" value="${val}">${lbl}</label>`).join("")+
+    `</div></div>`).join("");
+}
+function updateModeUI(){
+  const acute = currentMode()==="acute";
+  const b=$("modeBanner");
+  $("afiYesLbl").classList.toggle("on-yes", acute);
+  $("afiNoLbl").classList.toggle("on-no", !acute);
+  $("sxTitle").textContent = acute ? "④ 随伴症状（表証の鑑別項目）" : "④ 随伴症状（漢方鑑別に必要な項目）";
+  if(acute){
+    b.className="banner acute";
+    b.innerHTML="→ <b>表証</b>として評価します。鑑別は<b>八綱（陰陽・表裏・寒熱・虚実）</b>まで。<b>傷寒論記載の方剤を優先</b>し、発症からの日数（病期）も加味して選択します。";
+  }else{
+    b.className="banner";
+    b.innerHTML="→ <b>八綱＋気血水＋五臓</b>で評価します（雑病）。随伴症状を幅広く確認します。";
+  }
+  renderSymptomList();
+}
+
+/* ===================== 音声認識（独立したレコーダー） ===================== */
+const $=id=>document.getElementById(id);
+function makeRecorder(taId,btnId,statId,dotId){
+  const st={rec:null,on:false,base:""};
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){ $(statId).textContent="このブラウザは音声認識に未対応です（Chrome推奨）。手入力をご利用ください。"; $(btnId).disabled=true; return st;}
+  const rec=new SR(); rec.lang="ja-JP"; rec.continuous=true; rec.interimResults=true;
+  rec.onresult=e=>{
+    let interim="",fin="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      const r=e.results[i];
+      if(r.isFinal) fin+=r[0].transcript; else interim+=r[0].transcript;
+    }
+    if(fin) st.base+=fin;
+    $(taId).value=st.base+interim;
+  };
+  rec.onerror=e=>{ $(statId).textContent="音声認識エラー: "+e.error; };
+  rec.onend=()=>{ if(st.on){ try{rec.start();}catch(_){} } };
+  st.rec=rec;
+  $(btnId).onclick=()=>{
+    if(!st.on){
+      st.base=$(taId).value? $(taId).value+" " : "";
+      try{rec.start();}catch(_){}
+      st.on=true; $(btnId).textContent="■ 録音停止"; $(btnId).classList.add("recording");
+      if($(dotId))$(dotId).classList.add("on"); $(statId).textContent="録音中… 話してください。";
+    }else{
+      st.on=false; rec.stop();
+      $(btnId).textContent="● 録音開始"; $(btnId).classList.remove("recording");
+      if($(dotId))$(dotId).classList.remove("on"); $(statId).textContent="停止しました。内容を確認・修正できます。";
+    }
+  };
+  return st;
+}
+
+/* ===================== 音声読み上げ(TTS) ===================== */
+function speak(text){
+  if(!("speechSynthesis"in window)) return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ja-JP"; u.rate=1.0; u.pitch=1.0;
+  speechSynthesis.speak(u);
+}
+
+/* ===================== 解析エンジン ===================== */
+/* 語尾の活用に寛容な照合（例: 「疲れやすい」で「疲れやすく」もヒット） */
+function inc(text,k){
+  if(text.includes(k)) return true;
+  if(k.length>=3 && text.includes(k.slice(0,-1))) return true; // 末尾活用
+  return false;
+}
+
+/* 判断材料 = 年齢・性別・体格・問診記録・随伴症状・発症日数（全項目）。 */
+let runCount=0;
+function analyze(){
+  const age=parseInt($("ageInput").value);
+  const sex=$("sexSel").value;
+  const build=$("buildSel").value;
+  const daysCat=$("daysSel").value; // 3日以内 / 1週間程度 / 2週間以上 / 1か月以上
+  const memo=$("memoText").value.replace(/\s+/g,"");
+  const checked=[...document.querySelectorAll("#sxList input:checked")].map(c=>c.value);
+  if(!memo && !checked.length && !build && !sex && isNaN(age)){
+    alert("問診記録・随伴症状・基本情報のいずれかを入力してください。"); return;
+  }
+  const acuteFever = currentMode()==="acute"; // ②急性発熱性疾患＝あり
+  // 基本情報からの付加語
+  let extra="";
+  if(!isNaN(age)&&age>=65) extra+="高齢";
+  if(sex==="女性") extra+="女性";
+  if(build==="水") extra+="水太りむくみ色白";
+  // 判断材料テキスト（全項目を結合）
+  const text=memo+"　"+checked.join("　")+"　"+extra;
+  const w=k=> inc(text,k) ? 1.0 : 0;
+
+  let kyo=0,kan=0;
+  for(const s of CUES.kyo["+"]) kyo+=w(s);
+  for(const s of CUES.kyo["-"]) kyo-=w(s);
+  for(const s of CUES.kan["+"]) kan+=w(s);
+  for(const s of CUES.kan["-"]) kan-=w(s);
+  // 体格から虚実を直接補正（強い指標）
+  if(build==="実") kyo+=2; else if(build==="虚") kyo-=2; else if(build==="水") kyo-=1.5;
+  // 発症日数（プルダウン）による病期フラグ
+  const acute = daysCat==="1日程度" || daysCat==="3日以内";   // 太陽病期（表証）
+  const subac = daysCat==="7日程度" || daysCat==="14日程度";  // 少陽病期（亜急性〜遷延）
+
+  const patHits={};
+  for(const[pat,cues]of Object.entries(PAT_CUES)){
+    let wt=0,hit=[];
+    for(const q of cues){ const ww=w(q); if(ww>0){wt+=ww;hit.push(q);} }
+    if(wt>0) patHits[pat]={count:wt,hit};
+  }
+
+  // 急性発熱性疾患（表証）では対象方剤を感冒系に限定（八綱まで）
+  const pool = acuteFever ? DB.filter(rx=>ACUTE_RX.has(rx.n)) : DB;
+  // 八綱（表裏・寒熱・虚実）の証タグ。急性時はこれ以外（気血水・五臓）の加点はしない。
+  const HAKKO=["表寒","表証","少陽","裏実","裏寒","熱"];
+
+  const scored=pool.map(rx=>{
+    let score=0; const matched=[];
+    for(const k of rx.kw){ const ww=w(k); if(ww>0){score+=2*ww;matched.push(k);} }
+    if(matched.length){
+      const kyoAlign=(Math.sign(kyo)===Math.sign(rx.kyo)&&kyo!==0)?1:0;
+      const kanAlign=(Math.sign(kan)===Math.sign(rx.kan)&&kan!==0)?1:0;
+      const kyoConf=(Math.sign(kyo)&&Math.sign(rx.kyo)&&Math.sign(kyo)!==Math.sign(rx.kyo))?1:0;
+      const kanConf=(Math.sign(kan)&&Math.sign(rx.kan)&&Math.sign(kan)!==Math.sign(rx.kan))?1:0;
+      score+=kyoAlign*1.5+kanAlign*1.5 - kyoConf*1.5 - kanConf*1.5;
+      // 証タグ加点：急性時は八綱（表裏等）のみ、慢性時は気血水・五臓も加点
+      for(const p of rx.pat){
+        if(acuteFever && !HAKKO.includes(p)) continue;
+        if(patHits[p]) score+=1.2;
+      }
+      // 発症日数（病期）による補正
+      if(acute && (rx.pat.includes("表寒")||rx.pat.includes("表証"))) score+=2;
+      if(subac && rx.pat.includes("少陽")) score+=2;
+      // 急性発熱性疾患では傷寒論記載の方剤を優先（強い加点）
+      if(acuteFever && SHOKAN_RX.has(rx.n)) score+=4;
+    }
+    return {rx,score:Math.max(0,score),matched};
+  }).filter(o=>o.score>0).sort((a,b)=>b.score-a.score);
+
+  renderAxes(kyo,kan,patHits,acuteFever);
+  renderResults(scored);
+  const fups=buildFollowups(scored,kyo,kan,patHits,text,acuteFever);
+  renderFollowups(fups);
+
+  window.__lastAnalysis={text,kyo,kan,patHits,scored,fups,acuteFever};
+  runCount++;
+  $("runCount").innerHTML=`これまでに <b>${runCount}</b> 回検討しました（今回：問診記録${memo?"あり":"なし"}・随伴症状チェック<b>${checked.length}</b>件を加味）。問診記録の追記または随伴症状の変更後に、もう一度押すと再検討します。`;
+}
+
+function renderAxes(kyo,kan,patHits,acuteFever){
+  const lvl=(v,neg,pos,mid)=> v<=-2?neg:v<=-0.5?("やや"+neg):v>=2?pos:v>=0.5?("やや"+pos):mid;
+  const kyoLbl=lvl(kyo,"虚証","実証","中間");
+  const kanLbl=lvl(kan,"寒証","熱証","中間");
+  const pct=v=>50+Math.max(-50,Math.min(50,v*20));
+  const hyori = acuteFever
+    ? `<div class="axis"><div class="lbl">表裏（病位）</div><div class="val">表証</div>
+        <div class="mini">急性発熱性疾患＝表証として八綱で評価</div></div>` : "";
+  $("axes").innerHTML=hyori+`
+    <div class="axis"><div class="lbl">虚実（体力・抵抗力）</div><div class="val">${kyoLbl}</div>
+      <div class="bar"><i style="left:${Math.min(pct(kyo),50)}%;right:${100-Math.max(pct(kyo),50)}%;background:${kyo<0?'#4a8fd6':'#e0a83b'}"></i></div>
+      <div class="mini">虚 ◀―――▶ 実</div></div>
+    <div class="axis"><div class="lbl">寒熱</div><div class="val">${kanLbl}</div>
+      <div class="bar"><i style="left:${Math.min(pct(kan),50)}%;right:${100-Math.max(pct(kan),50)}%;background:${kan<0?'#4a8fd6':'#e06b5e'}"></i></div>
+      <div class="mini">寒 ◀―――▶ 熱</div></div>`;
+  const pats=Object.keys(patHits);
+  $("symptomTags").innerHTML = pats.length
+    ? pats.map(p=>`<span class="tag hit">${p}（${patHits[p].hit.join("・")}）</span>`).join("")
+    : '<span class="empty">明確な気血水の所見は抽出されませんでした。</span>';
+}
+
+/* 各社の製品番号（ツムラ番号をキー）。クラシエ=EK-番号、コタロー=N-番号。
+   そのメーカーが製造していない場合は null。
+   出典: ツムラHP医療用漢方製剤 / 小太郎漢方製薬HP / クラシエ（共通番号）の対応表。
+   ※取扱状況・剤形は変動するため最新は各社で要確認。 */
+const MAKER_NO = {
+  1:{k:"EK-1",ko:"N1"}, 27:{k:"EK-27",ko:"N27"}, 45:{k:null,ko:"N45"}, 19:{k:"EK-19",ko:"N19"},
+  127:{k:null,ko:"NC127"}, 9:{k:"EK-9",ko:"N9"}, 10:{k:"EK-10",ko:"N10"}, 8:{k:"EK-8",ko:"N8"},
+  14:{k:"EK-14",ko:"N14"}, 41:{k:"EK-41",ko:"N41"}, 43:{k:"EK-43",ko:"N43"}, 32:{k:"EK-32",ko:"N32"},
+  48:{k:"EK-48",ko:"N48"}, 108:{k:"EK-108",ko:"N108"}, 23:{k:"EK-23",ko:"N23"}, 24:{k:"EK-24",ko:"N24"},
+  25:{k:"EK-25",ko:"N25"}, 61:{k:"EK-61",ko:"N61"}, 106:{k:null,ko:"N106"}, 17:{k:"EK-17",ko:"N17"},
+  20:{k:"EK-20",ko:"N20"}, 30:{k:null,ko:"N30"}, 7:{k:"EK-7",ko:"N7"}, 107:{k:null,ko:null},
+  87:{k:"EK-87",ko:null}, 100:{k:null,ko:"N100"}, 5:{k:"EK-5",ko:"N5"}, 16:{k:"EK-16",ko:"N16"},
+  54:{k:null,ko:null}, 12:{k:"EK-12",ko:"N12"}, 26:{k:"EK-26",ko:"N26"}, 103:{k:null,ko:null},
+  29:{k:null,ko:"N29"}, 55:{k:null,ko:"N55"}, 47:{k:null,ko:null}, 31:{k:null,ko:"N31"},
+  38:{k:"EK-38",ko:"N38"}, 68:{k:"EK-68",ko:"N68"}, 15:{k:"EK-15",ko:"N15"}, 62:{k:"EK-62",ko:"N62"},
+  99:{k:null,ko:"N99"}, 40:{k:"EK-40",ko:"N40"}, 63:{k:null,ko:"N63"}, 136:{k:null,ko:null}
+};
+function makerLine(t){
+  const m=MAKER_NO[t]||{};
+  const tsu=`<span class="mk mk-t">ツムラ No.${t}</span>`;
+  const kr =`<span class="mk mk-k">クラシエ ${m.k||"—"}</span>`;
+  const ko =`<span class="mk mk-o">コタロー ${m.ko||"—"}</span>`;
+  return tsu+kr+ko;
+}
+function renderResults(scored){
+  const el=$("results");
+  if(!scored.length){ el.innerHTML='<div class="empty">該当する処方候補が見つかりませんでした。問診内容を具体的に追記してください。</div>'; return; }
+  const max=scored[0].score;
+  el.innerHTML=scored.slice(0,5).map((o,i)=>{
+    const pctv=Math.round(o.score/max*100);
+    return `<div class="rx ${i===0?'top':''}">
+      <div class="head">
+        <span class="name">${o.rx.n}</span>
+        <span class="yomi">${o.rx.y}</span>
+        ${SHOKAN_RX.has(o.rx.n)?'<span class="shokan">傷寒論</span>':''}
+        <span class="score">適合度 ${pctv}%</span>
+      </div>
+      <div class="makers">${makerLine(o.rx.t)}</div>
+      <div class="ind">${o.rx.ind}</div>
+      <div class="reason">合致した所見: ${o.matched.map(m=>`<b>${m}</b>`).join("・")||"—"}</div>
+      ${o.rx.ca!=="—"?`<div class="caution">⚠ ${o.rx.ca}</div>`:""}
+    </div>`;
+  }).join("");
+}
+
+/* ===================== 追加問診の自動生成 ===================== */
+function buildFollowups(scored,kyo,kan,patHits,text,acuteFever){
+  const q=[];
+  // 八綱（虚実・寒熱）は両モード共通
+  if(Math.abs(kyo)<0.5) q.push({item:"体力・虚実（がっしり／華奢、倦怠の程度）",why:"八綱（虚実）の判定材料が不足"});
+  if(Math.abs(kan)<0.5) q.push({item:"寒熱（悪寒・冷え／のぼせ・ほてり）",why:"八綱（寒熱）の判定材料が不足"});
+  if(acuteFever){
+    // 表証の鑑別（八綱まで）
+    if(!/汗/.test(text)) q.push({item:"発汗の有無（無汗／自汗）",why:"表証の虚実・方剤選択に必須"});
+    if(!/項|こわばり|頭痛|関節|ふしぶし|肩/.test(text))
+      q.push({item:"項背部のこわばり・頭痛・関節痛",why:"表証（太陽病）の所見を確認"});
+    if(!/口が苦い|胸脇|微熱|往来|吐き気/.test(text))
+      q.push({item:"往来寒熱・口苦・胸脇苦満・食欲",why:"少陽への移行（病期）の判定"});
+  }else{
+    // 気血水・五臓（雑病）
+    if(!/食欲|食|胃|消化|お腹|腹/.test(text)) q.push({item:"食欲・胃腸の調子（胃もたれ・下痢・便秘）",why:"脾胃（消化機能）の情報が不足"});
+    if(!/眠|不眠|寝|イライラ|不安|気分|ストレス/.test(text)) q.push({item:"睡眠・精神面（不眠・抑うつ・イライラ・不安）",why:"気の巡り・精神面の情報が不足"});
+    if(!/尿|むくみ|浮腫|排尿/.test(text)) q.push({item:"排尿回数・むくみの有無",why:"水滞・腎の情報が不足"});
+    if(/女性|更年期/.test(text) && !/月経|生理/.test(text))
+      q.push({item:"月経（周期・量・月経痛・月経前症状）",why:"瘀血・血虚の判定に月経情報が有用"});
+  }
+  if(scored.length===0 || (scored[0]&&scored[0].score<3))
+    q.push({item:"主訴・発症時期・増悪因子",why:"主訴が不明確で候補を絞れない"});
+  return q.slice(0,6);
+}
+
+function renderFollowups(fups){
+  const el=$("followups");
+  if(!fups.length){ el.innerHTML='<div class="empty">追加で確認すべき重要項目は検出されませんでした。十分な情報が得られています。</div>'; return; }
+  el.innerHTML='<ul class="followups">'+fups.map(f=>
+    `<li style="margin-bottom:9px"><b>${f.item}</b>`+
+    `<div style="font-size:11px;color:var(--sub);margin-top:2px;font-weight:400">▶ ${f.why}</div></li>`
+  ).join("")+'</ul>';
+}
+
+/* ===================== AI併用（任意） ===================== */
+async function aiAssist(){
+  const a=window.__lastAnalysis;
+  if(!a){ alert("先に「漢方薬を選択する」を実行してください。"); return; }
+  const key=$("aiKey").value.trim();
+  const prov=$("aiProvider").value;
+  const out=$("aiOut"); out.style.display="block";
+  if(!key){ out.textContent="APIキーが未入力です。キーを入力すると、上位候補の妥当性・鑑別・追加で聞くべき問診をAIが補足します。"; return; }
+  out.textContent="AIに問い合わせ中…";
+  const top=a.scored.slice(0,5).map(o=>`${o.rx.n}(適合${Math.round(o.score/a.scored[0].score*100)}%)`).join("、");
+  const prompt=`あなたは漢方専門医です。以下の問診と、ルールベースが挙げた候補を踏まえ、(1)最も妥当と考える処方と理由、(2)鑑別すべき処方、(3)確定のために追加で聞くべき問診事項を、簡潔な日本語で示してください。\n\n【問診】\n${a.text}\n\n【虚実スコア】${a.kyo}（虚-/実+） 【寒熱スコア】${a.kan}（寒-/熱+）\n【ルールベース候補】${top}`;
+  try{
+    if(prov==="anthropic"){
+      const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+        headers:{"content-type":"application/json","x-api-key":key,
+          "anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+        body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,
+          messages:[{role:"user",content:prompt}]})});
+      const j=await res.json();
+      out.textContent=j.content?j.content.map(c=>c.text).join(""):("エラー: "+JSON.stringify(j.error||j));
+    }else{
+      const res=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",
+        headers:{"content-type":"application/json","authorization":"Bearer "+key},
+        body:JSON.stringify({model:"gpt-4o",messages:[{role:"user",content:prompt}],max_tokens:1000})});
+      const j=await res.json();
+      out.textContent=j.choices?j.choices[0].message.content:("エラー: "+JSON.stringify(j.error||j));
+    }
+  }catch(e){ out.textContent="通信エラー: "+e.message+"\n（ローカルファイルからのAPI呼び出しはCORS等で失敗する場合があります）"; }
+}
+
+/* ===================== デモ ===================== */
+const DEMO_MEMO="半年ほど前から疲れやすく、夕方になると特にだるい。食欲もない。手足が冷える。";
+const DEMO_SX=["疲れやすい","食欲不振","胃もたれ","手足の冷え","不眠","肩こり"]; // チェックする項目
+
+const DEMO_ACUTE_MEMO="昨日から急な発熱と強い寒気。汗は出ていない。頭痛と節々の痛みもある。";
+const DEMO_ACUTE_SX=["悪寒","発熱","汗が出ない","こわばり","頭痛","関節痛"];
+
+/* ===================== init ===================== */
+let recMemo=null;
+window.addEventListener("DOMContentLoaded",()=>{
+  updateModeUI(); // バナー＋随伴症状リストを初期描画
+  recMemo=makeRecorder("memoText","recBtn","recStat","recDot");
+  // ②の切り替えで枠組み・症状リストを更新
+  document.querySelectorAll('input[name="afi"]').forEach(r=>r.addEventListener("change",updateModeUI));
+  $("analyzeBtn").onclick=analyze;
+  $("clearBtn").onclick=()=>{$("memoText").value="";if(recMemo)recMemo.base="";};
+  $("demoBtn").onclick=()=>{
+    const acute=currentMode()==="acute";
+    if(acute){
+      $("ageInput").value=34; $("sexSel").value="男性"; $("buildSel").value="実"; $("daysSel").value="1日程度";
+      $("memoText").value=DEMO_ACUTE_MEMO; if(recMemo)recMemo.base=DEMO_ACUTE_MEMO;
+      document.querySelectorAll("#sxList input").forEach(c=>{ c.checked=DEMO_ACUTE_SX.includes(c.value); });
+    }else{
+      $("ageInput").value=52; $("sexSel").value="女性"; $("buildSel").value="虚"; $("daysSel").value="3ヶ月以上";
+      $("memoText").value=DEMO_MEMO; if(recMemo)recMemo.base=DEMO_MEMO;
+      document.querySelectorAll("#sxList input").forEach(c=>{ c.checked=DEMO_SX.includes(c.value); });
+    }
+  };
+  $("aiBtn").onclick=aiAssist;
+});
+</script>
+</body>
+</html>
